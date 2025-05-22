@@ -1,6 +1,11 @@
 from flask import Flask, request, jsonify
+from slack_sdk import WebClient
+import os
 
 app = Flask(__name__)
+
+SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
+slack_client = WebClient(token=SLACK_BOT_TOKEN)
 
 @app.route("/slack/events", methods=["POST"])
 def slack_events():
@@ -14,7 +19,14 @@ def slack_events():
     if data.get("type") == "event_callback":
         event = data.get("event", {})
         print("Received event:", event)
-        # 여기에 이벤트에 따라 로직 추가 가능
+        
+        if event.get("type") == "app_mention":
+            channel = event.get("channel")
+            user = event.get("user")
+            text = event.get("text")
+
+            slack_client.chat_postMessage(channel=channel, text=text)
+        
         return "", 200
 
     return "Ignored", 200
