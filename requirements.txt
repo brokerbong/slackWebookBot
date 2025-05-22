@@ -1,2 +1,3 @@
 flask
 gunicorn
+slack_sdk
