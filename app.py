@@ -5,7 +5,7 @@ app = Flask(__name__)
 @app.route("/slack/events", methods=["POST"])
 def slack_events():
     data = request.get_json()
-
+    print(f'data.get("type"): {data.get("type")}, ')
     # Slack URL 인증용 응답
     if data.get("type") == "url_verification":
         return data.get("challenge"), 200, {"Content-Type": "text/plain"}
