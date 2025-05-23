@@ -2,5 +2,4 @@ flask
 gunicorn
 slack_sdk
 requests
-fitz
-io
+PyMuPDF
