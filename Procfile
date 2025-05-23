@@ -1,4 +1,4 @@
-web: uvicorn app:app
+web: uvicorn app:app --host=0.0.0.0 --port=${PORT}
 #web: gunicorn app:app
 
 # Uncomment this `release` process if you are using a database, so that Django's model
