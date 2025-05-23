@@ -1,4 +1,4 @@
-web: uvicorn main:app
+web: uvicorn app:app
 #web: gunicorn app:app
 
 # Uncomment this `release` process if you are using a database, so that Django's model
