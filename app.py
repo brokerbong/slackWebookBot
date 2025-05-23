@@ -15,14 +15,16 @@ def gen_pdf(url):
     response = requests.get(url, headers=headers)
     response.raise_for_status()  # 오류 시 예외 발생
 
-    # 3. 메모리에서 PyMuPDF로 PDF 열기
-    pdf_stream = BytesIO(response.content)
-    doc = fitz.open(stream=pdf_stream, filetype="pdf")
-    
-    # 4. 페이지별 텍스트 추출
-    for page_num, page in enumerate(doc, start=1):
-        text = page.get_text()
-        print(f"[Page {page_num}]\n{text}\n{'-'*50}")
+    try:
+        res.raise_for_status()
+    except requests.HTTPError as e:
+        print(f"❌ 다운로드 실패: {e}")
+        continue
+
+    # 메모리에서 PDF 열기
+    with fitz.open(stream=BytesIO(res.content), filetype="pdf") as doc:
+        text = "\n".join(page.get_text() for page in doc)
+        print("📄 추출된 텍스트:\n", text[:300])
 
 @app.route("/slack/events", methods=["POST"])
 def slack_events():
