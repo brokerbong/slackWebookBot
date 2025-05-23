@@ -64,5 +64,10 @@ async def slack_events(payload: SlackEvent):
 
     return PlainTextResponse("Ignored")
 
+@app.post("/")
+async def index():
+    
+    return PlainTextResponse("")
+
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=3000, reload=True)
