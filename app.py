@@ -1,11 +1,28 @@
 from flask import Flask, request, jsonify
 from slack_sdk import WebClient
 import os
+import requests
+import fitz  # PyMuPDF
+from io import BytesIO
 
 app = Flask(__name__)
 
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
 slack_client = WebClient(token=SLACK_BOT_TOKEN)
+
+def gen_pdf(url):
+    headers = {"Authorization": f"Bearer {SLACK_BOT_TOKEN}"}
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()  # 오류 시 예외 발생
+
+    # 3. 메모리에서 PyMuPDF로 PDF 열기
+    pdf_stream = BytesIO(response.content)
+    doc = fitz.open(stream=pdf_stream, filetype="pdf")
+    
+    # 4. 페이지별 텍스트 추출
+    for page_num, page in enumerate(doc, start=1):
+        text = page.get_text()
+        print(f"[Page {page_num}]\n{text}\n{'-'*50}")
 
 @app.route("/slack/events", methods=["POST"])
 def slack_events():
@@ -21,6 +38,13 @@ def slack_events():
         print("Received event:", event)
         
         if event.get("type") == "app_mention":
+            if event.get("files"):
+               for f in event["files"]:
+                mimetype = f.get("mimetype", "")
+                if mimetype == "application/pdf":
+                    public_url = f.get("permalink_public")
+                    gen_pdf(public_url)
+            
             channel = event.get("channel")
             user = event.get("user")
             text = event.get("text")
@@ -33,3 +57,5 @@ def slack_events():
 
 if __name__ == "__main__":
     app.run(port=3000)
+
+
