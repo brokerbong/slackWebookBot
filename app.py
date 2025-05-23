@@ -42,8 +42,8 @@ def slack_events():
                for f in event["files"]:
                 mimetype = f.get("mimetype", "")
                 if mimetype == "application/pdf":
-                    public_url = f.get("permalink_public")
-                    gen_pdf(public_url)
+                    downloadUrl = f.get("url_private_download")
+                    gen_pdf(downloadUrl)
             
             channel = event.get("channel")
             user = event.get("user")
