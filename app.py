@@ -16,13 +16,13 @@ def gen_pdf(url):
     response.raise_for_status()  # 오류 시 예외 발생
 
     try:
-        res.raise_for_status()
+        response.raise_for_status()
     except requests.HTTPError as e:
         print(f"❌ 다운로드 실패: {e}")
         continue
 
     # 메모리에서 PDF 열기
-    with fitz.open(stream=BytesIO(res.content), filetype="pdf") as doc:
+    with fitz.open(stream=BytesIO(response.content), filetype="pdf") as doc:
         text = "\n".join(page.get_text() for page in doc)
         print("📄 추출된 텍스트:\n", text[:300])
 
