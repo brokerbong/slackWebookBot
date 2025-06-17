@@ -110,7 +110,7 @@ async def fetch_hero_mondays(
     async with httpx.AsyncClient(timeout=20.0) as client:
         #while current <= e:
         while inserted < 5:
-            ds = current.strftime("%Y%m%d")
+            ds = current.strftime("%Y-%m-%d")
             url = url_tpl.format(ocid=ocid, date=ds)
 
             resp = await client.get(url, headers=headers)
