@@ -12,6 +12,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 import httpx
 import asyncio
+import asyncpg
 
 app = FastAPI()
 
