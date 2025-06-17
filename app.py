@@ -1,5 +1,5 @@
-from fastapi import FastAPI
-from fastapi.responses import PlainTextResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import PlainTextResponse, JSONResponse
 from pydantic import BaseModel
 from slack_sdk import WebClient
 import os
@@ -9,10 +9,26 @@ from io import BytesIO
 import uvicorn
 from typing import Optional, Dict, Any, List
 
+from datetime import datetime, timedelta
+import httpx
+import asyncio
+
 app = FastAPI()
 
+NXOPEN_API_KEY = os.getenv("NEXON_API_TOKEN")
+DATABASE_URL = os.getenv("DATABASE_URL")
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
 slack_client = WebClient(token=SLACK_BOT_TOKEN)
+
+# FastAPI 시작/종료 시점에 DB 연결 풀 생성/닫기
+@app.on_event("startup")
+async def on_startup():
+    app.state.db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    await app.state.db_pool.close()
+
 
 def gen_pdf(url):
     headers = {"Authorization": f"Bearer {SLACK_BOT_TOKEN}"}
@@ -63,6 +79,68 @@ async def slack_events(payload: SlackEvent):
         return PlainTextResponse("")
 
     return PlainTextResponse("Ignored")
+
+
+@app.get("/heroes/{ocid}/mondays")
+async def fetch_hero_mondays(
+    ocid: str,
+    start_date: str = "2023-12-25",
+    end_date:   str = "2025-06-16",):
+    # 날짜 파싱 및 유효성 검사
+    try:
+        s = datetime.strptime(start_date, "%Y-%m-%d")
+        e = datetime.strptime(end_date,   "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="날짜 형식은 YYYY-MM-DD 여야 합니다.")
+    if s > e:
+        raise HTTPException(status_code=400, detail="start_date가 end_date보다 이후일 수 없습니다.")
+
+    # 첫 월요일 계산 (0=월요일 … 6=일요일)
+    days_until_monday = (0 - s.weekday() + 7) % 7
+    current = s + timedelta(days=days_until_monday)
+
+    url_tpl = "https://open.api.nexon.com/maplestory/v1/character/stat?ocid={ocid}&date={date}"
+    headers = {"x-nxopen-api-key": NXOPEN_API_KEY}
+    pool = app.state.db_pool
+
+    inserted = 0
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        while current <= e:
+            ds = current.strftime("%Y%m%d")
+            url = url_tpl.format(ocid=ocid, date=ds)
+
+            resp = await client.get(url, headers=headers)
+            entry = {
+                "ocid": ocid,
+                "date": current.date(),  # DATE 타입으로
+                "data": resp.json() if resp.status_code == 200 else None
+            }
+
+            # DB에 INSERT
+            await pool.execute(
+                """
+                INSERT INTO character_original_data (ocid, date, data)
+                VALUES ($1, $2, $3::jsonb)
+                """,
+                entry["ocid"],
+                entry["date"],
+                json.dumps(entry["data"])
+            )
+            inserted += 1
+
+            # 초당 5회 제한 준수
+            await asyncio.sleep(0.3)
+            current += timedelta(days=7)
+
+    return JSONResponse({
+        "ocid":     ocid,
+        "from":     start_date,
+        "to":       end_date,
+        "mondays":  inserted,
+        "status":   "inserted into hero_history"
+    })
+
+
 
 @app.post("/")
 async def index():
