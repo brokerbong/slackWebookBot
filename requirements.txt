@@ -3,3 +3,5 @@ uvicorn[standard]
 slack_sdk
 requests
 PyMuPDF
+httpx
+asyncpg
