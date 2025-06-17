@@ -114,6 +114,7 @@ async def fetch_hero_mondays(
             url = url_tpl.format(ocid=ocid, date=ds)
 
             resp = await client.get(url, headers=headers)
+            print(f"url: {url}")
             print(f"[{ds}] status={resp.status_code}  body={resp.text[:200]}")
             entry = {
                 "ocid": ocid,
